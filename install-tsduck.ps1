@@ -31,6 +31,12 @@
 
   Download and install TSDuck for Windows.
 
+ .PARAMETER All
+
+  Install all options. By default, only the tools, plugins and documentation
+  are installed. In case of upgrade over an existing installation, the default
+  is to upgrade the same options as in the previous installation.
+
  .PARAMETER Destination
 
   Specify a local directory where the package will be downloaded.
@@ -57,6 +63,7 @@
 #>
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
+    [switch]$All = $false,
     [string]$Destination = "",
     [switch]$ForceDownload = $false,
     [switch]$GitHubActions = $false,
@@ -148,7 +155,11 @@ else {
 # Install package.
 if (-not $NoInstall) {
     Write-Output "Installing $InstallerName"
-    Start-Process -FilePath $InstallerPath -ArgumentList @("/S") -Wait
+    $ArgList = @("/S")
+    if ($All) {
+        $ArgList += "/all=true"
+    }
+    Start-Process -FilePath $InstallerPath -ArgumentList $ArgList -Wait
 }
 
 # Propagate Path in next jobs for GitHub Actions.
