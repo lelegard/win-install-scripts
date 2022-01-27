@@ -29,7 +29,7 @@
 <#
  .SYNOPSIS
 
-  Download and install the libsrt library for Windows.
+  Download and install the libusb library for Windows.
 
  .PARAMETER Destination
 
@@ -64,7 +64,7 @@ param(
     [switch]$NoPause = $false
 )
 
-Write-Output "==== libsrt download and installation procedure"
+Write-Output "==== libusb download and installation procedure"
 
 # A function to exit this script.
 function Exit-Script([string]$Message = "")
@@ -83,18 +83,18 @@ function Exit-Script([string]$Message = "")
 # Without this, Invoke-WebRequest is awfully slow.
 $ProgressPreference = 'SilentlyContinue'
 
-# Get the URL of the latest installer.
-$URL = (Invoke-RestMethod "https://api.github.com/repos/Haivision/srt/releases?per_page=20" |
-        ForEach-Object { $_.assets } |
-        ForEach-Object { $_.browser_download_url } |
-        Select-String @("/libsrt-.*\.exe$", "/libsrt-.*-win-installer\.zip$") |
-        Select-Object -First 1)
+# Get the 20 latest releases. Keep the first one which is not a prerelease.
+$AllReleases = Invoke-RestMethod "https://api.github.com/repos/libusb/libusb/releases?per_page=20"
+$Release = $AllReleases | Where-Object prerelease -eq $false | Select-Object -First 1
+$Version = $Release.tag_name -replace '^v',''
+$SourceURL = $Release.tarball_url
+$BinaryURL = $Release.assets | ForEach-Object { $_.browser_download_url } | Select-String @("/*.7z$") | Select-Object -First 1
 
-if (-not $URL) {
-    Exit-Script "Could not find a libsrt installer on GitHub"
+if (-not $BinaryURL) {
+    Exit-Script "Could not find a libusb installer on GitHub"
 }
-if (-not ($URL -match "\.zip$") -and -not ($URL -match "\.exe$")) {
-    Exit-Script "Unexpected URL, not .exe, not .zip: $URL"
+if (-not $SourceURL) {
+    Exit-Script "Could not find a libusb source archive on GitHub"
 }
 
 # Create the directory for external products or use default.
@@ -106,49 +106,54 @@ else {
 }
 
 # Local installer file.
-$InstallerName = (Split-Path -Leaf $URL)
+$SourceName = "libusb-${Version}.tgz"
+$SourcePath = "$Destination\$SourceName"
+$InstallerName = (Split-Path -Leaf $BinaryURL)
 $InstallerPath = "$Destination\$InstallerName"
 
-# Download installer
+# Download installer and source archive.
 if (-not $ForceDownload -and (Test-Path $InstallerPath)) {
     Write-Output "$InstallerName already downloaded, use -ForceDownload to download again"
 }
 else {
-    Write-Output "Downloading $URL ..."
-    Invoke-WebRequest $URL.ToString() -UseBasicParsing -UserAgent Download -OutFile $InstallerPath
+    Write-Output "Downloading $BinaryURL ..."
+    Invoke-WebRequest $BinaryURL.ToString() -UseBasicParsing -UserAgent Download -OutFile $InstallerPath
     if (-not (Test-Path $InstallerPath)) {
-        Exit-Script "$URL download failed"
+        Exit-Script "$BinaryURL download failed"
+    }
+}
+if (-not $ForceDownload -and (Test-Path $SourcePath)) {
+    Write-Output "$SourceName already downloaded, use -ForceDownload to download again"
+}
+else {
+    Write-Output "Downloading $SourceURL ..."
+    Invoke-WebRequest $SourceURL.ToString() -UseBasicParsing -UserAgent Download -OutFile $SourcePath
+    if (-not (Test-Path $SourcePath)) {
+        Exit-Script "$SourceURL download failed"
     }
 }
 
-# If installer is an archive, expect an exe with same name inside.
-if ($InstallerName -match "\.zip$") {
+# A function to search 7zip command line.
+function Search-7z()
+{
+    return (Get-ChildItem -Recurse -Path @("C:\Program Files\7-zip","C:\Program Files (x86)") -Include 7z.exe -ErrorAction Ignore | Select-Object -First 1)
+}
 
-    # Expected installer name in archive.
-    $ZipName = $InstallerName
-    $ZipPath = $InstallerPath
-    $InstallerName = $ZipName -replace '-win-installer.zip','.exe'
-    $InstallerPath = "$Destination\$InstallerName"
-
-    # Extract the installer.
-    Remove-Item -Force $InstallerPath -ErrorAction SilentlyContinue
-    Write-Output "Expanding $ZipName ..."
-    Expand-Archive $ZipPath -DestinationPath $Destination
-    if (-not (Test-Path $InstallerPath)) {
-        Exit-Script "$InstallerName not found in $ZipName"
+# Locate 7zip and, if not found, try to install it.
+$7z = Search-7z
+if (-not $7z) {
+    Write-Output "7-zip not found, trying to install it first"
+    $Install7Zip = (Join-Path $PSScriptRoot "install-7zip.ps1")
+    if (-not (Test-Path $Install7Zip)) {
+        Exit-Script "$Install7Zip not found, manually install 7-zip and retry"
+    }
+    & $Install7Zip -NoPause
+    $7z = Search-7z
+    if (-not $7z) {
+        Exit-Script "7-zip still not found, manually install it and retry"
     }
 }
 
-# Install package
-if (-not $NoInstall) {
-    Write-Output "Installing $InstallerName"
-    Start-Process -FilePath $InstallerPath -ArgumentList @("/S") -Wait
-}
-
-# Propagate LIBSRT in next jobs for GitHub Actions.
-if ($GitHubActions) {
-    $libsrt = [System.Environment]::GetEnvironmentVariable("LIBSRT","Machine")
-    Write-Output "LIBSRT=$libsrt" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-}
+# To be continued...
 
 Exit-Script

@@ -29,7 +29,7 @@
 <#
  .SYNOPSIS
 
-  Download and install the libsrt library for Windows.
+  Download and install 7zip for Windows.
 
  .PARAMETER Destination
 
@@ -64,14 +64,18 @@ param(
     [switch]$NoPause = $false
 )
 
-Write-Output "==== libsrt download and installation procedure"
+Write-Output "==== 7zip download and installation procedure"
+
+# Web page for the latest releases.
+$ReleasePage = "https://www.7-zip.org/download.html"
+$FallbackURL = "https://www.7-zip.org/a/7z1900-x64.exe"
 
 # A function to exit this script.
 function Exit-Script([string]$Message = "")
 {
     $Code = 0
     if ($Message -ne "") {
-        Write-Output "ERROR: $Message"
+        Write-Host "ERROR: $Message"
         $Code = 1
     }
     if (-not $NoPause) {
@@ -83,18 +87,39 @@ function Exit-Script([string]$Message = "")
 # Without this, Invoke-WebRequest is awfully slow.
 $ProgressPreference = 'SilentlyContinue'
 
-# Get the URL of the latest installer.
-$URL = (Invoke-RestMethod "https://api.github.com/repos/Haivision/srt/releases?per_page=20" |
-        ForEach-Object { $_.assets } |
-        ForEach-Object { $_.browser_download_url } |
-        Select-String @("/libsrt-.*\.exe$", "/libsrt-.*-win-installer\.zip$") |
-        Select-Object -First 1)
-
-if (-not $URL) {
-    Exit-Script "Could not find a libsrt installer on GitHub"
+# Get the HTML page for downloads.
+$status = 0
+$message = ""
+$Ref = $null
+try {
+    $response = Invoke-WebRequest -UseBasicParsing -UserAgent Download -Uri $ReleasePage
+    $status = [int] [Math]::Floor($response.StatusCode / 100)
 }
-if (-not ($URL -match "\.zip$") -and -not ($URL -match "\.exe$")) {
-    Exit-Script "Unexpected URL, not .exe, not .zip: $URL"
+catch {
+    $message = $_.Exception.Message
+}
+
+if ($status -ne 1 -and $status -ne 2) {
+    # Error fetching download page.
+    if ($message -eq "" -and (Test-Path variable:response)) {
+        Write-Output "Status code $($response.StatusCode), $($response.StatusDescription)"
+    }
+    else {
+        Write-Output "#### Error accessing ${ReleasePage}: $message"
+    }
+}
+else {
+    # Parse HTML page to locate the latest installer.
+    $Ref = $response.Links.href | Where-Object { $_ -like "*/7z*-x64.exe" } | Select-Object -First 1
+}
+
+if (-not $Ref) {
+    # Could not find a reference to installer.
+    $Url = [System.Uri]$FallbackURL
+}
+else {
+    # Build the absolute URL's from base URL (the download page) and href links.
+    $Url = New-Object -TypeName 'System.Uri' -ArgumentList ([System.Uri]$ReleasePage, $Ref)
 }
 
 # Create the directory for external products or use default.
@@ -106,49 +131,25 @@ else {
 }
 
 # Local installer file.
-$InstallerName = (Split-Path -Leaf $URL)
+$InstallerName = (Split-Path -Leaf $Url.LocalPath)
 $InstallerPath = "$Destination\$InstallerName"
 
-# Download installer
+# Download installer.
 if (-not $ForceDownload -and (Test-Path $InstallerPath)) {
     Write-Output "$InstallerName already downloaded, use -ForceDownload to download again"
 }
 else {
-    Write-Output "Downloading $URL ..."
-    Invoke-WebRequest $URL.ToString() -UseBasicParsing -UserAgent Download -OutFile $InstallerPath
+    Write-Output "Downloading $Url ..."
+    Invoke-WebRequest -UseBasicParsing -UserAgent Download -Uri $Url -OutFile $InstallerPath
     if (-not (Test-Path $InstallerPath)) {
-        Exit-Script "$URL download failed"
+        Exit-Script "$Url download failed"
     }
 }
 
-# If installer is an archive, expect an exe with same name inside.
-if ($InstallerName -match "\.zip$") {
-
-    # Expected installer name in archive.
-    $ZipName = $InstallerName
-    $ZipPath = $InstallerPath
-    $InstallerName = $ZipName -replace '-win-installer.zip','.exe'
-    $InstallerPath = "$Destination\$InstallerName"
-
-    # Extract the installer.
-    Remove-Item -Force $InstallerPath -ErrorAction SilentlyContinue
-    Write-Output "Expanding $ZipName ..."
-    Expand-Archive $ZipPath -DestinationPath $Destination
-    if (-not (Test-Path $InstallerPath)) {
-        Exit-Script "$InstallerName not found in $ZipName"
-    }
-}
-
-# Install package
+# Install package.
 if (-not $NoInstall) {
     Write-Output "Installing $InstallerName"
     Start-Process -FilePath $InstallerPath -ArgumentList @("/S") -Wait
-}
-
-# Propagate LIBSRT in next jobs for GitHub Actions.
-if ($GitHubActions) {
-    $libsrt = [System.Environment]::GetEnvironmentVariable("LIBSRT","Machine")
-    Write-Output "LIBSRT=$libsrt" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 }
 
 Exit-Script
