@@ -61,10 +61,13 @@ param(
     [switch]$ForceDownload = $false,
     [switch]$GitHubActions = $false,
     [switch]$NoInstall = $false,
-    [switch]$NoPause = $false
+    [switch]$NoPause = $false,
+    # Internal parameters for recursion as administrator:
+    [switch]$Install = $false,
+    [string]$7z = "",
+    [string]$SourceArchive = "",
+    [string]$BinArchive = ""
 )
-
-Write-Output "==== libusb download and installation procedure"
 
 # A function to exit this script.
 function Exit-Script([string]$Message = "")
@@ -79,6 +82,26 @@ function Exit-Script([string]$Message = "")
     }
     exit $Code
 }
+
+# Recursion as administrator
+if ($Install) {
+    # Expand binary 7z into Program Files\libusb.
+    $InstallDir = (Join-Path $env:ProgramFiles "libusb")
+    Remove-Item -Recurse -Force -ErrorAction Ignore $InstallDir
+    [void](New-Item -Path $InstallDir -ItemType Directory -Force)
+    . "$7z" x -y "-o$InstallDir" "$BinArchive"
+
+    # Copy source archive in subdirectory "source".
+    $SourceDir = (Join-Path $InstallDir "source")
+    [void](New-Item -Path $SourceDir -ItemType Directory -Force)
+    Copy-Item -Path $SourceArchive -Destination $SourceDir
+
+    # Define system-wide environment variable.
+    [System.Environment]::SetEnvironmentVariable("LIBUSB", $InstallDir, [System.EnvironmentVariableTarget]::Machine)
+    Exit-Script
+}
+
+Write-Output "==== libusb download and installation procedure"
 
 # Without this, Invoke-WebRequest is awfully slow.
 $ProgressPreference = 'SilentlyContinue'
@@ -154,6 +177,20 @@ if (-not $7z) {
     }
 }
 
-# To be continued...
+# Install package (recurse same script in administrator mode).
+if (-not $NoInstall) {
+    Write-Output "Installing $InstallerName"
+    $cmd = "& '" + $PSCommandPath + "' -Install -7z '" + $7z + "' -SourceArchive '" + $SourcePath + "' -BinArchive '" + $InstallerPath + "'"
+    if ($NoPause) {
+        $cmd += " -NoPause"
+    }
+    Start-Process -Wait -Verb runas -FilePath PowerShell.exe -ArgumentList @("-ExecutionPolicy", "RemoteSigned", "-Command", $cmd)
+}
+
+# Propagate LIBUSB in next jobs for GitHub Actions.
+if ($GitHubActions) {
+    $libusb = [System.Environment]::GetEnvironmentVariable("LIBUSB","Machine")
+    Write-Output "LIBUSB=$libusb" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+}
 
 Exit-Script
