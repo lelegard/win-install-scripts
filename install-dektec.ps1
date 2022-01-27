@@ -29,7 +29,7 @@
 <#
  .SYNOPSIS
 
-  Download and install the librist library for Windows.
+  Download and install the Dektec DTAPI for Windows.
 
  .PARAMETER Destination
 
@@ -64,17 +64,18 @@ param(
     [switch]$NoPause = $false
 )
 
-Write-Output "==== librist download and installation procedure"
+Write-Output "==== Dektec WinSDK download and installation procedure"
 
-# Web page for the latest releases of rist-installer.
-$ReleasePage = "https://github.com/tsduck/rist-installer/releases/latest"
+# Web page for the latest releases.
+$DektecUrl = "http://www.dektec.com/downloads/SDK/"
+$DtapiInstaller = "DekTec SDK - Windows Setup.exe"
 
 # A function to exit this script.
 function Exit-Script([string]$Message = "")
 {
     $Code = 0
     if ($Message -ne "") {
-        Write-Output "ERROR: $Message"
+        Write-Host "ERROR: $Message"
         $Code = 1
     }
     if (-not $NoPause) {
@@ -86,12 +87,12 @@ function Exit-Script([string]$Message = "")
 # Without this, Invoke-WebRequest is awfully slow.
 $ProgressPreference = 'SilentlyContinue'
 
-# Get the HTML page for latest package release.
+# Get the HTML page for downloads.
 $status = 0
 $message = ""
 $Ref = $null
 try {
-    $response = Invoke-WebRequest -UseBasicParsing -UserAgent Download -Uri $ReleasePage
+    $response = Invoke-WebRequest -UseBasicParsing -UserAgent Download -Uri $DektecUrl
     $status = [int] [Math]::Floor($response.StatusCode / 100)
 }
 catch {
@@ -109,7 +110,7 @@ if ($status -ne 1 -and $status -ne 2) {
 }
 else {
     # Parse HTML page to locate the latest installer.
-    $Ref = $response.Links.href | Where-Object { $_ -like "*/librist-*.exe" } | Select-Object -First 1
+    $Ref = $response.Links.href | Where-Object { $_ -like "*/WinSDK*.zip" } | Select-Object -First 1
 }
 
 if (-not $Ref) {
@@ -118,7 +119,7 @@ if (-not $Ref) {
 }
 else {
     # Build the absolute URL's from base URL (the download page) and href links.
-    $Url = New-Object -TypeName 'System.Uri' -ArgumentList ([System.Uri]$ReleasePage, $Ref)
+    $DtapiUrl = (New-Object -TypeName 'System.Uri' -ArgumentList ([System.Uri]$DektecUrl),$Ref)
 }
 
 # Create the directory for external products or use default.
@@ -129,32 +130,74 @@ else {
     [void](New-Item -Path $Destination -ItemType Directory -Force)
 }
 
-# Local installer file.
-$InstallerName = (Split-Path -Leaf $Url.LocalPath)
-$InstallerPath = "$Destination\$InstallerName"
+# Local installer files.
+$DtapiZipName = (Split-Path -Leaf $DtapiUrl.toString())
+$DtapiZipFile = (Join-Path $Destination $DtapiZipName)
+$DtapiDir = (Join-Path $Destination ([io.fileinfo] $DtapiZipName).BaseName)
+$DtapiSetup = (Join-Path $DtapiDir $DtapiInstaller)
 
-# Download installer.
-if (-not $ForceDownload -and (Test-Path $InstallerPath)) {
-    Write-Output "$InstallerName already downloaded, use -ForceDownload to download again"
+# Download WinSDK.zip
+if (-not $ForceDownload -and (Test-Path $DtapiZipFile)) {
+    Write-Output "$DtapiZipName already downloaded, use -ForceDownload to download again"
 }
 else {
-    Write-Output "Downloading $Url ..."
-    Invoke-WebRequest -UseBasicParsing -UserAgent Download -Uri $Url -OutFile $InstallerPath
-    if (-not (Test-Path $InstallerPath)) {
-        Exit-Script "$Url download failed"
+    Write-Output "Downloading $DtapiUrl ..."
+    Invoke-WebRequest -UseBasicParsing -UserAgent Download -Uri $DtapiUrl -OutFile $DtapiZipFile
+    if (-not (Test-Path $DtapiZipFile)) {
+        Exit-Script "$DtapiUrl download failed"
     }
 }
 
-# Install package.
-if (-not $NoInstall) {
-    Write-Output "Installing $InstallerName"
-    Start-Process -FilePath $InstallerPath -ArgumentList @("/S") -Wait
+# Extract archive.
+if (Test-Path $DtapiDir) {
+    Write-Output "Cleaning up previous $DtapiDir"
+    Remove-Item $DtapiDir -Recurse -Force
+}
+Write-Output "Expanding DTAPI to $DtapiDir ..."
+Expand-Archive $DtapiZipFile -DestinationPath $DtapiDir
+if (-not (Test-Path $DtapiSetup)) {
+    Exit-Script "$DtapiInstaller not found in $DtapiZipFile"
 }
 
-# Propagate LIBRIST in next jobs for GitHub Actions.
-if ($GitHubActions) {
-    $librist = [System.Environment]::GetEnvironmentVariable("LIBRIST","Machine")
-    Write-Output "LIBRIST=$librist" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+# Install the DTAPI.
+if (-not $NoInstall) {
+    # The Dektec WinSDK refuses to upgrade, you need to uninstall first.
+    # Registry roots for uninstallation procedures:
+    $RegUninstall = @(
+        "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+        "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+    )
+
+    # Loop on all uninstallation entries, looking for *dektec* names.
+    foreach ($reg in $RegUninstall) {
+        if (Test-Path $reg) {
+            # We must get the list of registered products first, then uninstall.
+            # If we uninstall during Get-ChildItem, we break the iteration.
+            $Products = (Get-ChildItem -Recurse -Path $reg)
+            $Products | ForEach-Object {
+                $name = (Split-Path -Leaf $_.Name)
+                $entries = ($_ | Get-ItemProperty)
+                if ($entries.DisplayName -like "*dektec*") {
+                    # Found a Dektec product, uninstall it.
+                    $cmd = $entries.UninstallString
+                    Write-Output "Uninstalling $($entries.DisplayName) version $($entries.DisplayVersion)"
+                    if ($cmd -like "msiexec*") {
+                        # Run msiexec with silent options.
+                        Start-Process -FilePath msiexec.exe -ArgumentList @("/uninstall", "$name", "/passive", "/norestart") -Wait
+                    }
+                    else {
+                        # Run the uninstall command
+                        Write-Output "Executing $cmd"
+                        Start-Process -FilePath powershell.exe -ArgumentList $cmd -Wait
+                    }
+                }
+            }
+        }
+    }
+
+    # Install new version in silent mode.
+    Write-Output "Executing $DtapiSetup"
+    Start-Process -FilePath $DtapiSetup -ArgumentList @("/S", "/v/qn") -Wait
 }
 
 Exit-Script

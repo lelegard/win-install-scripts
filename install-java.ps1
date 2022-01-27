@@ -29,7 +29,7 @@
 <#
  .SYNOPSIS
 
-  Download and install the librist library for Windows.
+  Download and install Java for Windows (AdoptOpenJDK community project).
 
  .PARAMETER Destination
 
@@ -44,6 +44,10 @@
 
   When used in a GitHub Action workflow, make sure that the required
   environment variables are propagated to subsequent jobs.
+
+ .PARAMETER JRE
+
+  Download and install the JRE. By default, the JDK is installed.
 
  .PARAMETER NoInstall
 
@@ -60,21 +64,22 @@ param(
     [string]$Destination = "",
     [switch]$ForceDownload = $false,
     [switch]$GitHubActions = $false,
+    [switch]$JRE = $false,
     [switch]$NoInstall = $false,
     [switch]$NoPause = $false
 )
 
-Write-Output "==== librist download and installation procedure"
+Write-Output "==== Java (AdoptOpenJDK) download and installation procedure"
 
-# Web page for the latest releases of rist-installer.
-$ReleasePage = "https://github.com/tsduck/rist-installer/releases/latest"
+# REST API for the latest releases of AdoptOpenJDK.
+$API = "https://api.adoptopenjdk.net/v3"
 
 # A function to exit this script.
 function Exit-Script([string]$Message = "")
 {
     $Code = 0
     if ($Message -ne "") {
-        Write-Output "ERROR: $Message"
+        Write-Host "ERROR: $Message"
         $Code = 1
     }
     if (-not $NoPause) {
@@ -86,39 +91,32 @@ function Exit-Script([string]$Message = "")
 # Without this, Invoke-WebRequest is awfully slow.
 $ProgressPreference = 'SilentlyContinue'
 
-# Get the HTML page for latest package release.
-$status = 0
-$message = ""
-$Ref = $null
-try {
-    $response = Invoke-WebRequest -UseBasicParsing -UserAgent Download -Uri $ReleasePage
-    $status = [int] [Math]::Floor($response.StatusCode / 100)
-}
-catch {
-    $message = $_.Exception.Message
-}
-
-if ($status -ne 1 -and $status -ne 2) {
-    # Error fetching download page.
-    if ($message -eq "" -and (Test-Path variable:response)) {
-        Write-Output "Status code $($response.StatusCode), $($response.StatusDescription)"
-    }
-    else {
-        Write-Output "#### Error accessing ${ReleasePage}: $message"
-    }
+# Get JDK or JRE.
+if ($JRE) {
+    $ImageType = "jre"
 }
 else {
-    # Parse HTML page to locate the latest installer.
-    $Ref = $response.Links.href | Where-Object { $_ -like "*/librist-*.exe" } | Select-Object -First 1
+    $ImageType = "jdk"
 }
 
-if (-not $Ref) {
-    # Could not find a reference to installer.
-    Exit-Script "Could not find a reference to librist installer in ${ReleasePage}"
-}
-else {
-    # Build the absolute URL's from base URL (the download page) and href links.
-    $Url = New-Object -TypeName 'System.Uri' -ArgumentList ([System.Uri]$ReleasePage, $Ref)
+# Get latest LTS version.
+$lts = (Invoke-RestMethod $API/info/available_releases).most_recent_lts
+
+# Get a list of assets for this LTS. Extract the one for 64-bit Windows.
+$bin = (Invoke-RestMethod $API/assets/latest/$lts/hotspot).binary | `
+    Where-Object os -eq windows | `
+    Where-Object architecture -eq x64 | `
+    Where-Object jvm_impl -eq hotspot | `
+    Where-Object heap_size -eq normal | `
+    Where-Object image_type -eq $ImageType | `
+    Where-Object project -eq jdk | `
+    Select-Object -First 1 -Property installer
+
+$InstallerURL = $bin.installer.link
+$InstallerName = $bin.installer.name
+
+if (-not $InstallerURL -or -not $InstallerName) {
+    Exit-Script "Cannot find URL for installer"
 }
 
 # Create the directory for external products or use default.
@@ -130,7 +128,6 @@ else {
 }
 
 # Local installer file.
-$InstallerName = (Split-Path -Leaf $Url.LocalPath)
 $InstallerPath = "$Destination\$InstallerName"
 
 # Download installer.
@@ -138,23 +135,25 @@ if (-not $ForceDownload -and (Test-Path $InstallerPath)) {
     Write-Output "$InstallerName already downloaded, use -ForceDownload to download again"
 }
 else {
-    Write-Output "Downloading $Url ..."
-    Invoke-WebRequest -UseBasicParsing -UserAgent Download -Uri $Url -OutFile $InstallerPath
+    Write-Output "Downloading $InstallerURL ..."
+    Invoke-WebRequest -UseBasicParsing -UserAgent Download -Uri $InstallerURL -OutFile $InstallerPath
     if (-not (Test-Path $InstallerPath)) {
-        Exit-Script "$Url download failed"
+        Exit-Script "$InstallerURL download failed"
     }
 }
 
 # Install package.
 if (-not $NoInstall) {
     Write-Output "Installing $InstallerName"
-    Start-Process -FilePath $InstallerPath -ArgumentList @("/S") -Wait
+    # Note: /passive does not request any input from the user but still displays a progress window.
+    # It is however required because msiexec /quiet fails to request UAC and immediately fails.
+    Start-Process -Verb runas -FilePath msiexec.exe -ArgumentList @("/i", $InstallerPath, "INSTALLLEVEL=3", "/quiet", "/qn", "/norestart") -Wait
 }
 
-# Propagate LIBRIST in next jobs for GitHub Actions.
+# Propagate JAVA_HOME in next jobs for GitHub Actions.
 if ($GitHubActions) {
-    $librist = [System.Environment]::GetEnvironmentVariable("LIBRIST","Machine")
-    Write-Output "LIBRIST=$librist" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+    $jhome = [System.Environment]::GetEnvironmentVariable("JAVA_HOME","Machine")
+    Write-Output "JAVA_HOME=$jhome" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 }
 
 Exit-Script

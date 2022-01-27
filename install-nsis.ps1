@@ -66,7 +66,7 @@ param(
 
 Write-Output "==== NSIS download and installation procedure"
 
-# Web page for the latest releases of NSIS.
+# Web page for the latest releases.
 $ReleasePage = "https://nsis.sourceforge.io/Download"
 $FallbackURL = "http://prdownloads.sourceforge.net/nsis/nsis-3.05-setup.exe?download"
 
@@ -134,7 +134,7 @@ else {
 $InstallerName = (Split-Path -Leaf $Url.LocalPath)
 $InstallerPath = "$Destination\$InstallerName"
 
-# Download installer
+# Download installer.
 if (-not $ForceDownload -and (Test-Path $InstallerPath)) {
     Write-Output "$InstallerName already downloaded, use -ForceDownload to download again"
 }
@@ -146,7 +146,7 @@ else {
     }
 }
 
-# Install package
+# Install package.
 if (-not $NoInstall) {
     Write-Output "Installing $InstallerName"
     Start-Process -FilePath $InstallerPath -ArgumentList @("/S") -Wait

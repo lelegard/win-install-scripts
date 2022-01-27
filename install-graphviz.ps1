@@ -29,7 +29,7 @@
 <#
  .SYNOPSIS
 
-  Download and install the librist library for Windows.
+  Download and install Graphviz for Windows (Graphviz is used by Doxygen).
 
  .PARAMETER Destination
 
@@ -64,17 +64,19 @@ param(
     [switch]$NoPause = $false
 )
 
-Write-Output "==== librist download and installation procedure"
+Write-Output "==== Graphviz download and installation procedure"
 
-# Web page for the latest releases of rist-installer.
-$ReleasePage = "https://github.com/tsduck/rist-installer/releases/latest"
+# Web page for the latest releases.
+$ReleasePage = "http://graphviz.org/download/"
+$FallbackURL = "https://gitlab.com/graphviz/graphviz/-/package_files/9574245/download"
+$FallbackName = "stable_windows_10_cmake_Release_x64_graphviz-install-2.47.1-win64.exe"
 
 # A function to exit this script.
 function Exit-Script([string]$Message = "")
 {
     $Code = 0
     if ($Message -ne "") {
-        Write-Output "ERROR: $Message"
+        Write-Host "ERROR: $Message"
         $Code = 1
     }
     if (-not $NoPause) {
@@ -86,7 +88,7 @@ function Exit-Script([string]$Message = "")
 # Without this, Invoke-WebRequest is awfully slow.
 $ProgressPreference = 'SilentlyContinue'
 
-# Get the HTML page for latest package release.
+# Get the HTML page for downloads.
 $status = 0
 $message = ""
 $Ref = $null
@@ -109,12 +111,12 @@ if ($status -ne 1 -and $status -ne 2) {
 }
 else {
     # Parse HTML page to locate the latest installer.
-    $Ref = $response.Links.href | Where-Object { $_ -like "*/librist-*.exe" } | Select-Object -First 1
+    $Ref = $response.Links.href | Where-Object { $_ -like "*stable_windows*Release*win64.exe*" } | Select-Object -First 1
 }
 
 if (-not $Ref) {
     # Could not find a reference to installer.
-    Exit-Script "Could not find a reference to librist installer in ${ReleasePage}"
+    $Url = [System.Uri]$FallbackURL
 }
 else {
     # Build the absolute URL's from base URL (the download page) and href links.
@@ -133,7 +135,7 @@ else {
 $InstallerName = (Split-Path -Leaf $Url.LocalPath)
 $InstallerPath = "$Destination\$InstallerName"
 
-# Download installer.
+# Download installer
 if (-not $ForceDownload -and (Test-Path $InstallerPath)) {
     Write-Output "$InstallerName already downloaded, use -ForceDownload to download again"
 }
@@ -149,12 +151,6 @@ else {
 if (-not $NoInstall) {
     Write-Output "Installing $InstallerName"
     Start-Process -FilePath $InstallerPath -ArgumentList @("/S") -Wait
-}
-
-# Propagate LIBRIST in next jobs for GitHub Actions.
-if ($GitHubActions) {
-    $librist = [System.Environment]::GetEnvironmentVariable("LIBRIST","Machine")
-    Write-Output "LIBRIST=$librist" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 }
 
 Exit-Script

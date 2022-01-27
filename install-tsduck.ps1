@@ -29,7 +29,7 @@
 <#
  .SYNOPSIS
 
-  Download and install the librist library for Windows.
+  Download and install TSDuck for Windows.
 
  .PARAMETER Destination
 
@@ -64,10 +64,10 @@ param(
     [switch]$NoPause = $false
 )
 
-Write-Output "==== librist download and installation procedure"
+Write-Output "==== TSDuck download and installation procedure"
 
-# Web page for the latest releases of rist-installer.
-$ReleasePage = "https://github.com/tsduck/rist-installer/releases/latest"
+# Web page for the latest releases.
+$ReleasePage = "https://github.com/tsduck/tsduck/releases/latest"
 
 # A function to exit this script.
 function Exit-Script([string]$Message = "")
@@ -109,12 +109,12 @@ if ($status -ne 1 -and $status -ne 2) {
 }
 else {
     # Parse HTML page to locate the latest installer.
-    $Ref = $response.Links.href | Where-Object { $_ -like "*/librist-*.exe" } | Select-Object -First 1
+    $Ref = $response.Links.href | Where-Object { $_ -like "*/TSDuck-Win64-*.exe" } | Select-Object -First 1
 }
 
 if (-not $Ref) {
     # Could not find a reference to installer.
-    Exit-Script "Could not find a reference to librist installer in ${ReleasePage}"
+    Exit-Script "Could not find a reference to installer in ${ReleasePage}"
 }
 else {
     # Build the absolute URL's from base URL (the download page) and href links.
@@ -151,10 +151,10 @@ if (-not $NoInstall) {
     Start-Process -FilePath $InstallerPath -ArgumentList @("/S") -Wait
 }
 
-# Propagate LIBRIST in next jobs for GitHub Actions.
+# Propagate Path in next jobs for GitHub Actions.
 if ($GitHubActions) {
-    $librist = [System.Environment]::GetEnvironmentVariable("LIBRIST","Machine")
-    Write-Output "LIBRIST=$librist" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+    $path = [System.Environment]::GetEnvironmentVariable("Path","Machine")
+    Write-Output "Path=$path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 }
 
 Exit-Script
