@@ -159,7 +159,7 @@ else {
 # A function to search 7zip command line.
 function Search-7z()
 {
-    return (Get-ChildItem -Recurse -Path @("C:\Program Files\7-zip","C:\Program Files (x86)") -Include 7z.exe -ErrorAction Ignore | Select-Object -First 1)
+    return (Get-ChildItem -Recurse -Path @("C:\Program Files\7-zip","C:\Program Files (x86)\7-zip") -Include 7z.exe -ErrorAction Ignore | Select-Object -First 1)
 }
 
 # Locate 7zip and, if not found, try to install it.
