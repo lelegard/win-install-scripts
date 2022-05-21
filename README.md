@@ -6,7 +6,7 @@ Each downloaded software is either open source or free to use.
 These scripts are useful to automate the setup of a software environment,
 typically in a CI/CD pipeline.
 
-Each script is autonomous and can be individually extracted for reuse
+Each `install-*.ps1` script is autonomous and can be individually extracted for reuse
 in another project (liberal BSD-2-Clause license).
 
 By default, when a script is run from the Windows explorer, it pops up
@@ -30,3 +30,8 @@ The default action for double-click on a `.ps1` file in Windows Explorer is to
 edit the script file using notepad. This is not very convenient. The registry
 file `WindowsPowerShell.reg` changes this to execute the PowerShell script
 on double-click. This is more consistent with `.exe` files which are executed.
+
+Additionally, a few `set-*.ps1` scripts are provided to setup typical
+configurations such as autologin or wallpaper. These scripts require options
+and, unlike the `install-*.ps1` scripts, they must be run from a PowerShell
+window or script, not from the Windows Explorer.
