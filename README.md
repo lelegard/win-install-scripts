@@ -1,7 +1,8 @@
 ## Scripts to automate the installation of various tools on Windows
 
 Each PowerShell script downloads and installs some software for Windows.
-Each downloaded software is either open source or free to use.
+Each downloaded software is either open source or free to use or is a
+builtin feature of Windows.
 
 These scripts are useful to automate the setup of a software environment,
 typically in a CI/CD pipeline.

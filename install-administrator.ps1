@@ -29,17 +29,18 @@
 <#
  .SYNOPSIS
 
-  Install and configure the integrated OpenSSH client and server on Windows.
+  Enable the Administrator account and make it appear in the login page.
+  On Windows 10 Home, this is not done by default.
 
  .PARAMETER Destination
 
   Specify a local directory where the package will be downloaded.
-  Ignored in this script (Windows builtin package).
+  Ignored in this script (Windows builtin feature).
 
  .PARAMETER ForceDownload
 
   Force a download even if the package is already downloaded.
-  Ignored in this script (Windows builtin package).
+  Ignored in this script (Windows builtin feature).
 
  .PARAMETER GitHubActions
 
@@ -67,9 +68,8 @@ param(
     [switch]$Install = $false
 )
 
-Write-Output "==== Windows integrated OpenSSH installation procedure"
+Write-Output "==== Windows Administrator account enabling procedure"
 
-$UserName = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 $IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
 # A function to exit this script.
@@ -86,22 +86,8 @@ function Exit-Script([string]$Message = "")
     exit $Code
 }
 
-# Make sure that a file exists, at least empty.
-function Enforce-File([string]$path)
-{
-    $dir = (Split-Path $path -Parent)
-    if (-not (Test-Path $dir -PathType Container)) {
-        Write-Output "Creating directory $dir ..."
-        [void](New-Item $dir -ItemType Directory -Force)
-    }
-    if (-not (Test-Path $path -PathType Leaf)) {
-        Write-Output "Creating file $path ..."
-        [void](New-Item $path -ItemType File -Force)
-    }
-}
-
 if ($NoInstall) {
-    Write-Output "Builtin Windows package, nothing to do"
+    Write-Output "Builtin Windows feature, nothing to do"
 }
 elseif (-not $IsAdmin) {
     # Execution for non-admin user, recurse for admin part.
@@ -114,60 +100,10 @@ elseif (-not $IsAdmin) {
 }
 else {
     # Executed as administrator.
-
-    # Install OpenSSH client and server.
-    foreach ($name in @("OpenSSH.Client", "OpenSSH.Server")) {
-        $product = (Get-WindowsCapability -Online | Where-Object Name -like "${name}*" | Select-Object -First 1)
-        if ($product -eq $null) {
-            Write-Output "$name not found"
-        }
-        elseif ($product.State -like "Installed") {
-            Write-Output "$($product.Name) already installed"
-        }
-        else {
-            Write-Output "Installing $($product.Name) ..."
-            [void](Add-WindowsCapability -Online -Name $product.Name)
-        }
-    }
-
-    # Start and enable the SSH server service.
-    Start-Service sshd
-    Set-Service -Name sshd -StartupType 'Automatic'
-
-    # Check and create firewall rule for SSH server.
-    $rule =(Get-NetFirewallRule -Name "OpenSSH-Server-In-TCP")
-    if ($rule -eq $null) {
-        Write-Output "Adding firewall rule for SSH server ..."
-        New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
-    }
-
-    # Set PowerShell as default login shell for SSH sessions.
-    Write-Output "Setting PowerShell as default shell for SSH sessions ..."
-    [void](New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -PropertyType String -Force)
-
-    # Make sure that administrators_authorized_keys file exists.
-    $akeys = "${env:ProgramData}\ssh\administrators_authorized_keys"
-    Enforce-File $akeys
-
-    Write-Output "Adjusting security of $akeys ..."
-    $acl = Get-Acl $akeys
-    $acl.SetAccessRuleProtection($true, $false)
-    $rule1 = New-Object system.security.accesscontrol.filesystemaccessrule("Administrators", "FullControl", "Allow")
-    $rule2 = New-Object system.security.accesscontrol.filesystemaccessrule("SYSTEM", "FullControl", "Allow")
-    $acl.SetAccessRule($rule1)
-    $acl.SetAccessRule($rule2)
-    $acl | Set-Acl
-
-    # Make sure that the authorized_keys file exists for the current user.
-    $akeys = "${env:HOMEDRIVE}${env:HOMEPATH}\.ssh\authorized_keys"
-    Enforce-File $akeys
-
-    Write-Output "Adjusting security of $akeys ..."
-    $acl = Get-Acl $akeys
-    $acl.SetAccessRuleProtection($true, $false)
-    $rule = New-Object system.security.accesscontrol.filesystemaccessrule($UserName, "FullControl", "Allow")
-    $acl.SetAccessRule($rule)
-    $acl | Set-Acl
+    # The administrator user name is localized, this is not a hard-coded name. Get it by SID.
+    $UserName = (Get-CimInstance -ClassName Win32_UserAccount -Filter "LocalAccount = TRUE and SID like 'S-1-5-%-500'").name
+    Write-Output "Enabling $UserName account ..."
+    net user $UserName /active:yes
 }
 
 Exit-Script
