@@ -7,7 +7,7 @@ builtin feature of Windows.
 These scripts are useful to automate the setup of a software environment,
 typically in a CI/CD pipeline.
 
-Each `install-*.ps1` script only depends on `install-common.psm1`.
+Each `install-*.ps1` script only depends on `install-common.ps1`.
 Both files can be individually extracted for reuse in another project
 (liberal BSD-2-Clause license).
 
