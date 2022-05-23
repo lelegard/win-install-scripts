@@ -1,6 +1,6 @@
 ﻿#-----------------------------------------------------------------------------
 #
-#  Copyright (c) 2021, Thierry Lelegard
+#  Copyright (c) 2022, Thierry Lelegard
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -25,36 +25,13 @@
 #  THE POSSIBILITY OF SUCH DAMAGE.
 #
 #-----------------------------------------------------------------------------
+#
+#  Download and install the libusb library for Windows.
+#  The script install-7zip.ps1 is required if 7z is not installed.
+#  See parameters documentation in install-common.ps1.
+#
+#-----------------------------------------------------------------------------
 
-<#
- .SYNOPSIS
-
-  Download and install the libusb library for Windows.
-
- .PARAMETER Destination
-
-  Specify a local directory where the package will be downloaded.
-  By default, use the downloads folder for the current user.
-
- .PARAMETER ForceDownload
-
-  Force a download even if the package is already downloaded.
-
- .PARAMETER GitHubActions
-
-  When used in a GitHub Action workflow, make sure that the required
-  environment variables are propagated to subsequent jobs.
-
- .PARAMETER NoInstall
-
-  Do not install the package. By default, the package is installed.
-
- .PARAMETER NoPause
-
-  Do not wait for the user to press <enter> at end of execution. By default,
-  execute a "pause" instruction at the end of execution, which is useful
-  when the script was run from Windows Explorer.
-#>
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
     [string]$Destination = "",
@@ -69,19 +46,9 @@ param(
     [string]$BinArchive = ""
 )
 
-# A function to exit this script.
-function Exit-Script([string]$Message = "")
-{
-    $Code = 0
-    if ($Message -ne "") {
-        Write-Output "ERROR: $Message"
-        $Code = 1
-    }
-    if (-not $NoPause) {
-        pause
-    }
-    exit $Code
-}
+Write-Output "==== libusb download and installation procedure"
+
+. "$PSScriptRoot\install-common.ps1"
 
 # Recursion as administrator
 if ($Install) {
@@ -97,14 +64,9 @@ if ($Install) {
     Copy-Item -Path $SourceArchive -Destination $SourceDir
 
     # Define system-wide environment variable.
-    [System.Environment]::SetEnvironmentVariable("LIBUSB", $InstallDir, [System.EnvironmentVariableTarget]::Machine)
+    Define-Environment "LIBUSB" $InstallDir
     Exit-Script
 }
-
-Write-Output "==== libusb download and installation procedure"
-
-# Without this, Invoke-WebRequest is awfully slow.
-$ProgressPreference = 'SilentlyContinue'
 
 # Get the 20 latest releases. Keep the first one which is not a prerelease.
 $AllReleases = Invoke-RestMethod "https://api.github.com/repos/libusb/libusb/releases?per_page=20"
@@ -120,41 +82,15 @@ if (-not $SourceURL) {
     Exit-Script "Could not find a libusb source archive on GitHub"
 }
 
-# Create the directory for external products or use default.
-if (-not $Destination) {
-    $Destination = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
-}
-else {
-    [void](New-Item -Path $Destination -ItemType Directory -Force)
-}
-
 # Local installer file.
 $SourceName = "libusb-${Version}.tgz"
 $SourcePath = "$Destination\$SourceName"
-$InstallerName = (Split-Path -Leaf $BinaryURL)
+$InstallerName = Get-URL-Local $BinaryURL
 $InstallerPath = "$Destination\$InstallerName"
 
 # Download installer and source archive.
-if (-not $ForceDownload -and (Test-Path $InstallerPath)) {
-    Write-Output "$InstallerName already downloaded, use -ForceDownload to download again"
-}
-else {
-    Write-Output "Downloading $BinaryURL ..."
-    Invoke-WebRequest $BinaryURL.ToString() -UseBasicParsing -UserAgent Download -OutFile $InstallerPath
-    if (-not (Test-Path $InstallerPath)) {
-        Exit-Script "$BinaryURL download failed"
-    }
-}
-if (-not $ForceDownload -and (Test-Path $SourcePath)) {
-    Write-Output "$SourceName already downloaded, use -ForceDownload to download again"
-}
-else {
-    Write-Output "Downloading $SourceURL ..."
-    Invoke-WebRequest $SourceURL.ToString() -UseBasicParsing -UserAgent Download -OutFile $SourcePath
-    if (-not (Test-Path $SourcePath)) {
-        Exit-Script "$SourceURL download failed"
-    }
-}
+Download-Package $BinaryURL $InstallerPath
+Download-Package $SourceURL $SourcePath
 
 # A function to search 7zip command line.
 function Search-7z()
@@ -166,7 +102,7 @@ function Search-7z()
 $7z = Search-7z
 if (-not $7z) {
     Write-Output "7-zip not found, trying to install it first"
-    $Install7Zip = (Join-Path $PSScriptRoot "install-7zip.ps1")
+    $Install7Zip = "$PSScriptRoot\install-7zip.ps1"
     if (-not (Test-Path $Install7Zip)) {
         Exit-Script "$Install7Zip not found, manually install 7-zip and retry"
     }
@@ -180,17 +116,10 @@ if (-not $7z) {
 # Install package (recurse same script in administrator mode).
 if (-not $NoInstall) {
     Write-Output "Installing $InstallerName"
-    $cmd = "& '" + $PSCommandPath + "' -Install -7z '" + $7z + "' -SourceArchive '" + $SourcePath + "' -BinArchive '" + $InstallerPath + "'"
-    if ($NoPause) {
-        $cmd += " -NoPause"
-    }
-    Start-Process -Wait -Verb runas -FilePath PowerShell.exe -ArgumentList @("-ExecutionPolicy", "RemoteSigned", "-Command", $cmd)
+    Recurse-Admin "-Install -7z '$7z' -SourceArchive '$SourcePath' -BinArchive '$InstallerPath'"
 }
 
 # Propagate LIBUSB in next jobs for GitHub Actions.
-if ($GitHubActions) {
-    $libusb = [System.Environment]::GetEnvironmentVariable("LIBUSB","Machine")
-    Write-Output "LIBUSB=$libusb" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-}
+Propagate-Environment "LIBUSB"
 
 Exit-Script

@@ -1,6 +1,6 @@
 ﻿#-----------------------------------------------------------------------------
 #
-#  Copyright (c) 2021, Thierry Lelegard
+#  Copyright (c) 2022, Thierry Lelegard
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -25,36 +25,12 @@
 #  THE POSSIBILITY OF SUCH DAMAGE.
 #
 #-----------------------------------------------------------------------------
+#
+#  Download and install OpenSSL for Windows.
+#  See parameters documentation in install-common.ps1.
+#
+#-----------------------------------------------------------------------------
 
-<#
- .SYNOPSIS
-
-  Download and install OpenSSL for Windows.
-
- .PARAMETER Destination
-
-  Specify a local directory where the package will be downloaded.
-  By default, use the downloads folder for the current user.
-
- .PARAMETER ForceDownload
-
-  Force a download even if the package is already downloaded.
-
- .PARAMETER GitHubActions
-
-  When used in a GitHub Action workflow, make sure that the required
-  environment variables are propagated to subsequent jobs.
-
- .PARAMETER NoInstall
-
-  Do not install the package. By default, the package is installed.
-
- .PARAMETER NoPause
-
-  Do not wait for the user to press <enter> at end of execution. By default,
-  execute a "pause" instruction at the end of execution, which is useful
-  when the script was run from Windows Explorer.
-#>
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
     [string]$Destination = "",
@@ -66,96 +42,9 @@ param(
 
 Write-Output "==== OpenSSL download and installation procedure"
 
-# Web page for the latest releases.
-$ReleasePage = "http://slproweb.com/products/Win32OpenSSL.html"
+. "$PSScriptRoot\install-common.ps1"
 
-# A function to exit this script.
-function Exit-Script([string]$Message = "")
-{
-    $Code = 0
-    if ($Message -ne "") {
-        Write-Output "ERROR: $Message"
-        $Code = 1
-    }
-    if (-not $NoPause) {
-        pause
-    }
-    exit $Code
-}
-
-# Without this, Invoke-WebRequest is awfully slow.
-$ProgressPreference = 'SilentlyContinue'
-
-# Get the HTML page for downloads.
-$status = 0
-$message = ""
-$Ref32 = $null
-$Ref64 = $null
-try {
-    $response = Invoke-WebRequest -UseBasicParsing -UserAgent Download -Uri $ReleasePage
-    $status = [int] [Math]::Floor($response.StatusCode / 100)
-}
-catch {
-    $message = $_.Exception.Message
-}
-
-if ($status -ne 1 -and $status -ne 2) {
-    # Error fetching download page.
-    if ($message -eq "" -and (Test-Path variable:response)) {
-        Write-Output "Status code $($response.StatusCode), $($response.StatusDescription)"
-    }
-    else {
-        Write-Output "#### Error accessing ${ReleasePage}: $message"
-    }
-}
-else {
-    # Parse HTML page to locate the latest installer.
-    $Ref32 = $response.Links.href | Where-Object { $_ -like "*/Win32OpenSSL-*.msi" } | Select-Object -First 1
-    $Ref64 = $response.Links.href | Where-Object { $_ -like "*/Win64OpenSSL-*.msi" } | Select-Object -First 1
-}
-
-if (-not $Ref32 -or -not $Ref64) {
-    # Could not find a reference to installer.
-    Exit-Script "Cannot find OpenSSL 32 and/or 64 bits in $ReleasePage"
-}
-else {
-    # Build the absolute URL's from base URL (the download page) and href links.
-    $Url32 = New-Object -TypeName 'System.Uri' -ArgumentList ([System.Uri]$ReleasePage, $Ref32)
-    $Url64 = New-Object -TypeName 'System.Uri' -ArgumentList ([System.Uri]$ReleasePage, $Ref64)
-}
-
-# Create the directory for external products or use default.
-if (-not $Destination) {
-    $Destination = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
-}
-else {
-    [void](New-Item -Path $Destination -ItemType Directory -Force)
-}
-
-# Download and install one package.
-function Download-Install([string]$Url)
-{
-    $InstallerName = (Split-Path -Leaf $Url.toString())
-    $InstallerPath = "$Destination\$InstallerName"
-
-    if (-not $ForceDownload -and (Test-Path $InstallerPath)) {
-        Write-Output "$InstallerName already downloaded, use -ForceDownload to download again"
-    }
-    else {
-        Write-Output "Downloading $Url ..."
-        Invoke-WebRequest -UseBasicParsing -UserAgent Download -Uri $Url -OutFile $InstallerPath
-        if (-not (Test-Path $InstallerPath)) {
-            Exit-Script "$Url download failed"
-        }
-    }
-
-    if (-not $NoInstall) {
-        Write-Output "Installing $InstallerName"
-        Start-Process msiexec.exe -ArgumentList @("/i", $InstallerPath, "/qn", "/norestart") -Wait
-    }
-}
-
-# Download and install the two MSI packages.
-Download-Install $Url32
-Download-Install $Url64
+# Download and install the two MSI packages, 32 and 64 bits.
+Install-Standard-Msi "http://slproweb.com/products/Win32OpenSSL.html" "*/Win64OpenSSL-*.msi"
+Install-Standard-Msi "http://slproweb.com/products/Win32OpenSSL.html" "*/Win32OpenSSL-*.msi"
 Exit-Script

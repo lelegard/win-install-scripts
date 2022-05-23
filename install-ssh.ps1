@@ -25,117 +25,44 @@
 #  THE POSSIBILITY OF SUCH DAMAGE.
 #
 #-----------------------------------------------------------------------------
+#
+#  Install and configure the integrated OpenSSH client and server on Windows.
+#  On Windows 10 Home, this is not done by default.
+#  See parameters documentation in install-common.ps1.
+#
+#-----------------------------------------------------------------------------
 
-<#
- .SYNOPSIS
-
-  Install and configure the integrated OpenSSH client and server on Windows.
-
- .PARAMETER Destination
-
-  Specify a local directory where the package will be downloaded.
-  Ignored in this script (Windows builtin package).
-
- .PARAMETER ForceDownload
-
-  Force a download even if the package is already downloaded.
-  Ignored in this script (Windows builtin package).
-
- .PARAMETER GitHubActions
-
-  When used in a GitHub Action workflow, make sure that the required
-  environment variables are propagated to subsequent jobs.
-
- .PARAMETER NoInstall
-
-  Do not install the package. By default, the package is installed.
-
- .PARAMETER NoPause
-
-  Do not wait for the user to press <enter> at end of execution. By default,
-  execute a "pause" instruction at the end of execution, which is useful
-  when the script was run from Windows Explorer.
-#>
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
     [string]$Destination = "",
     [switch]$ForceDownload = $false,
     [switch]$GitHubActions = $false,
     [switch]$NoInstall = $false,
-    [switch]$NoPause = $false,
-    # Internal parameters for recursion as administrator:
-    [switch]$Install = $false
+    [switch]$NoPause = $false
 )
 
 Write-Output "==== Windows integrated OpenSSH installation procedure"
 
-$UserName = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-$IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-# A function to exit this script.
-function Exit-Script([string]$Message = "")
-{
-    $Code = 0
-    if ($Message -ne "") {
-        Write-Output "ERROR: $Message"
-        $Code = 1
-    }
-    if (-not $NoPause) {
-        pause
-    }
-    exit $Code
-}
-
-# Make sure that a file exists, at least empty.
-function Enforce-File([string]$path)
-{
-    $dir = (Split-Path $path -Parent)
-    if (-not (Test-Path $dir -PathType Container)) {
-        Write-Output "Creating directory $dir ..."
-        [void](New-Item $dir -ItemType Directory -Force)
-    }
-    if (-not (Test-Path $path -PathType Leaf)) {
-        Write-Output "Creating file $path ..."
-        [void](New-Item $path -ItemType File -Force)
-    }
-}
+. (Join-Path $PSScriptRoot install-common.ps1)
 
 if ($NoInstall) {
     Write-Output "Builtin Windows package, nothing to do"
 }
 elseif (-not $IsAdmin) {
     # Execution for non-admin user, recurse for admin part.
-    Write-Output "Must be administrator to continue, trying to restart as administrator ..."
-    $cmd = "& '" + $PSCommandPath + "' -Install"
-    if ($NoPause) {
-        $cmd += " -NoPause"
-    }
-    Start-Process -Wait -Verb runas -FilePath PowerShell.exe -ArgumentList @("-ExecutionPolicy", "RemoteSigned", "-Command", $cmd)
+    Recurse-Admin
 }
 else {
-    # Executed as administrator.
-
     # Install OpenSSH client and server.
-    foreach ($name in @("OpenSSH.Client", "OpenSSH.Server")) {
-        $product = (Get-WindowsCapability -Online | Where-Object Name -like "${name}*" | Select-Object -First 1)
-        if ($product -eq $null) {
-            Write-Output "$name not found"
-        }
-        elseif ($product.State -like "Installed") {
-            Write-Output "$($product.Name) already installed"
-        }
-        else {
-            Write-Output "Installing $($product.Name) ..."
-            [void](Add-WindowsCapability -Online -Name $product.Name)
-        }
-    }
+    Install-Windows-Capability "OpenSSH.Client"
+    Install-Windows-Capability "OpenSSH.Server"
 
     # Start and enable the SSH server service.
     Start-Service sshd
     Set-Service -Name sshd -StartupType 'Automatic'
 
     # Check and create firewall rule for SSH server.
-    $rule =(Get-NetFirewallRule -Name "OpenSSH-Server-In-TCP")
+    $rule = (Get-NetFirewallRule -Name "OpenSSH-Server-In-TCP" -ErrorAction Ignore)
     if ($rule -eq $null) {
         Write-Output "Adding firewall rule for SSH server ..."
         New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
@@ -145,29 +72,9 @@ else {
     Write-Output "Setting PowerShell as default shell for SSH sessions ..."
     [void](New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -PropertyType String -Force)
 
-    # Make sure that administrators_authorized_keys file exists.
-    $akeys = "${env:ProgramData}\ssh\administrators_authorized_keys"
-    Enforce-File $akeys
-
-    Write-Output "Adjusting security of $akeys ..."
-    $acl = Get-Acl $akeys
-    $acl.SetAccessRuleProtection($true, $false)
-    $rule1 = New-Object system.security.accesscontrol.filesystemaccessrule("Administrators", "FullControl", "Allow")
-    $rule2 = New-Object system.security.accesscontrol.filesystemaccessrule("SYSTEM", "FullControl", "Allow")
-    $acl.SetAccessRule($rule1)
-    $acl.SetAccessRule($rule2)
-    $acl | Set-Acl
-
-    # Make sure that the authorized_keys file exists for the current user.
-    $akeys = "${env:HOMEDRIVE}${env:HOMEPATH}\.ssh\authorized_keys"
-    Enforce-File $akeys
-
-    Write-Output "Adjusting security of $akeys ..."
-    $acl = Get-Acl $akeys
-    $acl.SetAccessRuleProtection($true, $false)
-    $rule = New-Object system.security.accesscontrol.filesystemaccessrule($UserName, "FullControl", "Allow")
-    $acl.SetAccessRule($rule)
-    $acl | Set-Acl
+    # Make sure that authorized_keys files are correctly configured.
+    Create-File-Set-Owner "${env:ProgramData}\ssh\administrators_authorized_keys" @("Administrators", "SYSTEM")
+    Create-File-Set-Owner "${env:HOMEDRIVE}${env:HOMEPATH}\.ssh\authorized_keys"  @($CurrentUserName)
 }
 
 Exit-Script
