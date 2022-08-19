@@ -270,10 +270,7 @@ function Propagate-Environment([string]$Name, [string]$Value = "")
 function Add-Directory-To-Path([string]$Dir, [string]$PathName = "Path")
 {
     $Value = Get-Environment $PathName
-    if (";$Value;" -like "*;$Dir;*") {
-        Write-Output "$Dir already in $PathName"
-    }
-    else {
+    if (";$Value;" -notlike "*;$Dir;*") {
         Write-Output "Adding $Dir to $PathName"
         Define-Environment $PathName "$Value;$Dir"
     }
@@ -282,21 +279,23 @@ function Add-Directory-To-Path([string]$Dir, [string]$PathName = "Path")
 # Add a shortcut in the startup menu.
 function Add-Start-Menu-Entry([string]$Name, [string]$Target, [string]$MenuSubDir = "", $AllUsers = $false)
 {
-    if ($AllUsers) {
-        $MenuDir = [Environment]::GetFolderPath('CommonStartMenu') + "\Programs"
-    }
-    else {
-        $MenuDir = [Environment]::GetFolderPath('StartMenu') + "\Programs"
-    }
-    if ($MenuSubDir -ne "") {
-        $MenuDir += "\$MenuSubDir"
-        if (-not (Test-Path -PathType Container $MenuDir)) {
-            [void](New-Item $MenuDir -ItemType Directory)
+    if (Test-Path "$Target") {
+        if ($AllUsers) {
+            $MenuDir = [Environment]::GetFolderPath('CommonStartMenu') + "\Programs"
         }
+        else {
+            $MenuDir = [Environment]::GetFolderPath('StartMenu') + "\Programs"
+        }
+        if ($MenuSubDir -ne "") {
+            $MenuDir += "\$MenuSubDir"
+            if (-not (Test-Path -PathType Container $MenuDir)) {
+                [void](New-Item $MenuDir -ItemType Directory)
+            }
+        }
+        Remove-Item "$MenuDir\$Name.lnk" -Force -ErrorAction Ignore
+        $WScriptShell = New-Object -ComObject WScript.Shell
+        $Shortcut = $WScriptShell.CreateShortcut("$MenuDir\$Name.lnk")
+        $Shortcut.TargetPath = $Target
+        $Shortcut.Save()
     }
-    Remove-Item "$MenuDir\$Name.lnk" -Force -ErrorAction Ignore
-    $WScriptShell = New-Object -ComObject WScript.Shell
-    $Shortcut = $WScriptShell.CreateShortcut("$MenuDir\$Name.lnk")
-    $Shortcut.TargetPath = $Target
-    $Shortcut.Save()
 }

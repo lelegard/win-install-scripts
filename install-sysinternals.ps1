@@ -174,12 +174,10 @@ function Admin-Stuff([string]$Dir)
         if ($Is64 -and (Test-Path "$TargetDir\${file}64.exe")) {
             $exe = "${file}64.exe"
         }
-        if ($tool.GUI -and (Test-Path "$TargetDir\$exe")) {
+        if ($tool.GUI) {
             Add-Start-Menu-Entry "$name" "$TargetDir\$exe" "SysInternals" $true
         }
-        if (Test-Path "$TargetDir\$file.chm") {
-            Add-Start-Menu-Entry "$name Help" "$TargetDir\$file.chm" "SysInternals" $true
-        }
+        Add-Start-Menu-Entry "$name Help" "$TargetDir\$file.chm" "SysInternals" $true
     }
 }
 
