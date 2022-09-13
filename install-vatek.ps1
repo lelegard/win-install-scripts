@@ -26,7 +26,7 @@
 #
 #-----------------------------------------------------------------------------
 #
-#  Download and install the VATek (Vision Advanced Technologies) SDK for Windows.
+#  Download and install the VATek (Vision Advance Technologies) SDK for Windows.
 #  See parameters documentation in install-common.ps1.
 #
 #-----------------------------------------------------------------------------
@@ -44,10 +44,6 @@ Write-Output "==== VATek SDK download and installation procedure"
 
 . "$PSScriptRoot\install-common.ps1"
 
-Install-Standard-Exe `
-    "https://github.com/VisionAdvanceTechnologyInc/vatek_sdk_2/releases/latest" `
-    "*/VATek-Win64-*.exe" `
-    "" `
-    @("/verysilent", "/suppressmsgboxes", "/norestart")
+Install-GitHub-Exe 'VisionAdvanceTechnologyInc/vatek_sdk_2' '/VATek-Win64-.*\.exe$' @("/verysilent", "/suppressmsgboxes", "/norestart")
 
 Exit-Script
