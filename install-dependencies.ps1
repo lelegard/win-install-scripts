@@ -61,9 +61,7 @@ if ($AdminStuff -ne "") {
 }
 else {
     # Direct invocation.
-    Write-Output "==== @@@@ direct"
-    $Url = Get-URL-In-HTML "https://github.com/lucasg/Dependencies/releases/latest" "*/Dependencies_x64_Release.zip"
-    Write-Output "==== @@@@ URL: $Url"
+    $Url = Get-URL-In-GitHub 'lucasg/Dependencies' '/Dependencies_x64_Release.zip$'
     $InstallerName = Get-URL-Local $Url
     $InstallerPath = "$Destination\$InstallerName"
     Download-Package $Url $InstallerPath
