@@ -61,4 +61,6 @@ if ($All) {
 
 Install-Standard-Exe "https://github.com/tsduck/tsduck/releases/latest" "*/TSDuck-Win64-*.exe" "" $ArgList
 Propagate-Environment "Path"
+Propagate-Environment "PYTHONPATH"
+Propagate-Environment "CLASSPATH"
 Exit-Script
