@@ -69,7 +69,7 @@ if ($Install) {
 }
 
 # Get the 20 latest releases. Keep the first one which is not a prerelease.
-$AllReleases = Invoke-RestMethod "https://api.github.com/repos/libusb/libusb/releases?per_page=20"
+$AllReleases = (Get-Releases-In-GitHub "libusb/libusb")
 $Release = $AllReleases | Where-Object prerelease -eq $false | Select-Object -First 1
 $Version = $Release.tag_name -replace '^v',''
 $SourceURL = $Release.tarball_url
