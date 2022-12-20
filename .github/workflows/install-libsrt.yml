@@ -1,9 +1,8 @@
 name: Test SRT installation
-
 on:
   workflow_dispatch: # manual trigger
 jobs:
-  windows:
+  installation:
     runs-on: windows-latest
     env:
       # The repo secret "GUEST_TOKEN" is a GitHub token without any privilege, just avoiding

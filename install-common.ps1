@@ -225,6 +225,11 @@ function Get-Releases-In-GitHub([string]$Repo)
     $Response = (Invoke-WebRequest -UseBasicParsing -UserAgent $UserAgent -Headers $Headers -Uri "https://api.github.com/repos/$Repo/releases?per_page=20")
 
     $Remain = $Response.Headers['X-RateLimit-Remaining']
+    Write-Output "@@@@"
+    $Response.Headers  #@@@@@@@@@@@@@@@@
+    Write-Output "@@@@"
+    $Remain.GetType() #@@@@@@@@@@@@@@@@
+    Write-Output "@@@@"
     if (-not -not $Remain -and [int]$Remain -lt 10) {
         Write-Output "Warning: GitHub API rate limit remaining is $Remain"
     }
