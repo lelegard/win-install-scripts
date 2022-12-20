@@ -40,6 +40,7 @@ param(
     [switch]$NoPause = $false
 )
 Set-PSDebug -Trace 2 #@@@@@@@@@@@@@@@@
+$PSVersionTable #@@@@@@@@@@@@@@@@
 
 Write-Output "==== libsrt download and installation procedure"
 
