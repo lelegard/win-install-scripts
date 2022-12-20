@@ -44,6 +44,7 @@ Set-PSDebug -Trace 2 #@@@@@@@@@@@@@@@@
 Write-Output "==== libsrt download and installation procedure"
 
 . "$PSScriptRoot\install-common.ps1"
+Get-Releases-In-GitHub "Haivision/srt" #@@@@@@@@@@@@@@@@
 
 # Get the URL of the latest installer.
 $URL = (Get-URL-In-GitHub "Haivision/srt" @("/libsrt-.*\.exe$", "/libsrt-.*-win-installer\.zip$"))
