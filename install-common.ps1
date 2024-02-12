@@ -40,7 +40,8 @@
 # Current user environment.
 $IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 $CurrentUserName = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-$AdminUserName = (Get-CimInstance -ClassName Win32_UserAccount -Filter "LocalAccount = TRUE and SID like 'S-1-5-%-500'").name
+$AdminUserName = (Get-CimInstance -ClassName Win32_UserAccount -Filter "LocalAccount = TRUE and SID like 'S-1-5-%-500'").Name
+$AdminGroupName = (Get-CimInstance -ClassName Win32_Group -Filter "LocalAccount = TRUE and SID like 'S-1-5-%-544'").Name
 
 # Without this, Invoke-WebRequest is awfully slow.
 $ProgressPreference = 'SilentlyContinue'

@@ -50,7 +50,7 @@ else {
     [void](New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -PropertyType String -Force)
 
     # Make sure that authorized_keys files are correctly configured.
-    Create-File-Set-Owner "${env:ProgramData}\ssh\administrators_authorized_keys" @("Administrators", "SYSTEM")
+    Create-File-Set-Owner "${env:ProgramData}\ssh\administrators_authorized_keys" @($AdminGroupName, "SYSTEM")
     Create-File-Set-Owner "${env:HOMEDRIVE}${env:HOMEPATH}\.ssh\authorized_keys"  @($CurrentUserName)
 }
 
