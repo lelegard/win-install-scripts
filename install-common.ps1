@@ -391,3 +391,14 @@ function Add-Start-Menu-Entry([string]$Name, [string]$Target, [string]$MenuSubDi
         $Shortcut.Save()
     }
 }
+
+# Search a file in a path.
+function Search-Path([string]$Name, [string]$Path = $env:Path)
+{
+    foreach ($dir in $env:Path.Split(';')) {
+        if (Test-Path "$dir\$Name") {
+            return "$dir\$Name"
+        }
+    }
+    return $null
+}
