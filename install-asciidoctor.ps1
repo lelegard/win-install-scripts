@@ -23,7 +23,7 @@ Write-Output "==== Asciidoctor download and installation procedure"
 
 # Need ruby gem
 if (-not (Search-Path "gem") -and -not (Search-Path "gem.cmd") -and -not (Search-Path "gem.exe")) {
-    & "$PSScriptRoot\install-ruby.ps1" -NoPause
+    & "$PSScriptRoot\install-ruby.ps1" -NoPause -Destination:$Destination -ForceDownload:$ForceDownload -GitHubActions:$GitHubActions
     $Path = Get-Environment "Path"
     $env:Path = "${env:Path};$Path"
 }

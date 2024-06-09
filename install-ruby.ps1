@@ -54,4 +54,5 @@ else {
     }
 }
 
+Propagate-Environment "Path"
 Exit-Script
