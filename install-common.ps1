@@ -297,7 +297,7 @@ function Download-Package([string]$Url, [string]$InstallerPath)
     }
 }
 
-# Standard installation procedure for an executable installer.
+# Standard installation procedure for an executable installer, to be searched in a Web page.
 function Install-Standard-Exe([string]$ReleasePage, [string]$Pattern, [string]$FallbackURL = "", [string[]]$InstallerParams = @())
 {
     $Url = Get-URL-In-HTML $ReleasePage $Pattern $FallbackURL
@@ -324,10 +324,9 @@ function Install-GitHub-Exe([string]$Repo, [string]$Pattern, [string[]]$Installe
     }
 }
 
-# Standard installation procedure for an MSI installer.
-function Install-Standard-Msi([string]$ReleasePage, [string]$Pattern, [string]$FallbackURL = "")
+# Installation procedure for an MSI installer, from it URL.
+function Install-Msi([string]$Url)
 {
-    $Url = Get-URL-In-HTML $ReleasePage $Pattern $FallbackURL
     $InstallerName = Get-URL-Local $Url
     $InstallerPath = "$Destination\$InstallerName"
     Download-Package $Url $InstallerPath
@@ -335,6 +334,13 @@ function Install-Standard-Msi([string]$ReleasePage, [string]$Pattern, [string]$F
         Write-Output "Installing $InstallerName"
         Start-Process -Wait -Verb runas -FilePath msiexec.exe -ArgumentList @("/i", $InstallerPath, "/quiet", "/qn", "/norestart")
     }
+}
+
+# Standard installation procedure for an MSI installer, to be searched in a Web page.
+function Install-Standard-Msi([string]$ReleasePage, [string]$Pattern, [string]$FallbackURL = "")
+{
+    $Url = Get-URL-In-HTML $ReleasePage $Pattern $FallbackURL
+    Install-Msi $Url
 }
 
 # Get system-wide environment variable.
