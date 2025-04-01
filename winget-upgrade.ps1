@@ -29,7 +29,7 @@ elseif (-not $IsAdmin) {
     Recurse-Admin
 }
 else {
-    winget upgrade --all --disable-interactivity
+    winget upgrade --all --disable-interactivity --accept-package-agreements --accept-source-agreements
 }
 
 Exit-Script
