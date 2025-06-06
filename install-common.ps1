@@ -324,7 +324,7 @@ function Install-GitHub-Exe([string]$Repo, [string]$Pattern, [string[]]$Installe
     }
 }
 
-# Installation procedure for an MSI installer, from it URL.
+# Installation procedure for an MSI installer, from its URL.
 function Install-Msi([string]$Url)
 {
     $InstallerName = Get-URL-Local $Url

@@ -21,10 +21,6 @@ Write-Output "==== Git download and installation procedure"
 
 . "$PSScriptRoot\install-common.ps1"
 
-Install-Standard-Exe `
-    "https://git-scm.com/download/win" `
-    "*/Git-*-64-bit.exe" `
-    "https://github.com/git-for-windows/git/releases/download/v2.34.0.windows.1/Git-2.34.0-64-bit.exe" `
-    @("/verysilent", "/suppressmsgboxes", "/norestart")
+Install-GitHub-Exe 'git-for-windows/git' '/Git-.*-64-bit\.exe$' @("/verysilent", "/suppressmsgboxes", "/norestart") -Latest
 
 Exit-Script
