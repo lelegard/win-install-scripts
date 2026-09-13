@@ -1,0 +1,14 @@
+name: Test Ruby installation
+on:
+  workflow_dispatch: # manual trigger
+jobs:
+  installation:
+    runs-on: windows-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+    - uses: actions/checkout@master
+    - run: |
+        ruby --version
+        ./install-ruby.ps1 -GitHubActions -NoPause
+        ruby --version
