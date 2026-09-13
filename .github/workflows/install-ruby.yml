@@ -9,6 +9,16 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - run: |
+        write-output "=== Installed version of Ruby"
         ruby --version
+        write-output "=== Process definition of Path"
+        $env:Path -split ';'
+        write-output "=== System definition of Path"
+        [System.Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine) -split ';'
         ./install-ruby.ps1 -GitHubActions -NoPause
+        write-output "=== New version of Ruby"
         ruby --version
+        write-output "=== Process definition of Path"
+        $env:Path -split ';'
+        write-output "=== System definition of Path"
+        [System.Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine) -split ';'
