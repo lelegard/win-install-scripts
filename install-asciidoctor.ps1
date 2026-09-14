@@ -21,8 +21,18 @@ Write-Output "==== Asciidoctor download and installation procedure"
 
 . "$PSScriptRoot\install-common.ps1"
 
-# Need ruby gem
-if (-not (Search-Path "gem") -and -not (Search-Path "gem.cmd") -and -not (Search-Path "gem.exe")) {
+# Need Ruby 4 at least. The installation of "rouge" requires module strscan 3.1.8.
+# With Ruby 3, an older version is embedded and the installation of "rouge" needs
+# to compile strscan-3.1.8. Since the Ruby development kit is likely not installed,
+# the compilation of strscan fails. We also need the Ruby gem command.
+
+if (-not (Search-Command "ruby") -or -not (Search-Command "gem")) {
+    $InstallRuby = $true
+}
+else {
+    $InstallRuby = [int](ruby -e "print RUBY_VERSION.to_i") -lt 4
+}
+if ($InstallRuby) {
     & "$PSScriptRoot\install-ruby.ps1" -NoPause -Destination:$Destination -ForceDownload:$ForceDownload -GitHubActions:$GitHubActions
     $Path = Get-Environment "Path"
     $env:Path = "${env:Path};$Path"
