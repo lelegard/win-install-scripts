@@ -34,8 +34,14 @@ else {
 }
 if ($InstallRuby) {
     & "$PSScriptRoot\install-ruby.ps1" -NoPause -Destination:$Destination -ForceDownload:$ForceDownload -GitHubActions:$GitHubActions
-    $Path = Get-Environment "Path"
-    $env:Path = "${env:Path};$Path"
+    # Get ruby installation path and make it visible in the Path.
+    $rubydir = (get-environment "Path") -split ';' | `
+        Select-String "ruby" | `
+        Select-String -NotMatch "ruby1", "ruby2", "ruby3" | `
+        Select-Object -First 1
+    if ($rubydir -ne $null) {
+        $env:Path = "$rubydir;${env:Path}"
+    }
 }
 
 ruby --version
