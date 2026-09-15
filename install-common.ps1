@@ -434,7 +434,7 @@ function Add-Start-Menu-Entry([string]$Name, [string]$Target, [string]$MenuSubDi
 # Search a file in a path.
 function Search-Path([string]$Name, [string]$Path = $env:Path)
 {
-    foreach ($dir in $env:Path.Split(';')) {
+    foreach ($dir in $Path.Split(';')) {
         if (Test-Path "$dir\$Name") {
             return "$dir\$Name"
         }
@@ -443,8 +443,9 @@ function Search-Path([string]$Name, [string]$Path = $env:Path)
 }
 
 # Search a command in a path (.exe, .cmd, .ps1).
-function Search-Command([string]$Name, [string]$Path = $env:Path)
+function Search-Command([string]$Name)
 {
+    # Try using the Path.
     $res = Search-Path $Name
     if ($res -eq $null) {
         $res = Search-Path "$Name.exe"
@@ -452,6 +453,13 @@ function Search-Command([string]$Name, [string]$Path = $env:Path)
             $res = Search-Path "$Name.cmd"
             if ($res -eq $null) {
                 $res = Search-Path "$Name.ps1"
+                if ($res -eq $null) {
+                    # Try using Get-Command (probably redundant).
+                    $res = Get-Command $Name -ErrorAction SilentlyContinue
+                    if ($res -ne $null) {
+                        $res = $res.Path
+                    }
+                }
             }
         }
     }
