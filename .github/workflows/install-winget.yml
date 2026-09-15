@@ -1,0 +1,30 @@
+name: Test WinGet installation
+on:
+  workflow_dispatch: # manual trigger
+jobs:
+  installation:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: powershell # instead of default pwsh
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+    - uses: actions/checkout@master
+    - run: |
+        $wg = Get-Command winget -ErrorAction SilentlyContinue
+        $wpath = if ($wg -eq $null) { "not found" } else { $wg.Path }
+        write-output "winget path: $wpath"
+        if ($wg -ne $null) {
+            ./install-winget.ps1 -GitHubActions -NoPause
+            # Checking installed winget
+            $wg = Get-Command winget -ErrorAction SilentlyContinue
+            $wpath = if ($wg -eq $null) { "not found" } else { $wg.Path }
+            write-output "winget path: $wpath"
+            # Testing winget
+            winget install --accept-package-agreements --accept-source-agreements --disable-interactivity tsduck
+        }
