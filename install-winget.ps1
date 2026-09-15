@@ -55,10 +55,10 @@ if (-not (Find-WinGet)) {
                 Write-Output "Installing NuGet ..."
                 Install-PackageProvider -Name "NuGet" -Force -ForceBootstrap -ErrorAction Continue
             }
-            if (-not (Get-Module -Name Microsoft.WinGet.Client -ListAvailable)) {
+            # if (-not (Get-Module -Name Microsoft.WinGet.Client -ListAvailable)) {
                 Write-Output "Installing Microsoft.WinGet.Client PowerShell module ..."
                 Install-Module -Name Microsoft.WinGet.Client -AcceptLicense -Force -AllowClobber -Repository PSGallery -ErrorAction Continue
-            }
+            # }
             Import-Module -Name Microsoft.WinGet.Client
             Write-Output "Installing WinGet ..."
             # try { Repair-WinGetPackageManager -AllUsers } catch {}
