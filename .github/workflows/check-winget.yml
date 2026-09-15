@@ -1,0 +1,22 @@
+name: Check presence of winget
+on:
+  workflow_dispatch: # manual trigger
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: powershell # instead of default pwsh
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+    - run: |
+        write-output "Runner: ${{ matrix.runner }}"
+        write-output "Architecture: $env:PROCESSOR_ARCHITECTURE"
+        Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' | Select-Object ProductName, DisplayVersion, CurrentBuild, UBR
+        Get-Command winget
+        winget install --accept-package-agreements --accept-source-agreements --disable-interactivity tsduck
