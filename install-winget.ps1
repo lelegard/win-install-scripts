@@ -43,7 +43,16 @@ if (-not (Search-Command winget)) {
             Import-Module -Name Microsoft.WinGet.Client
             Write-Output "Installing WinGet ..."
             # try { Repair-WinGetPackageManager -AllUsers } catch {}
-            Repair-WinGetPackageManager -AllUsers
+            try {
+                Repair-WinGetPackageManager -AllUsers -Verbose
+            } catch {
+                Write-Host "::group::Repair-WinGetPackageManager failure details"
+                Get-Module Microsoft.WinGet.Client | Select-Object Name, Version
+                $_.Exception | Format-List * -Force
+                $_.Exception.InnerException | Format-List * -Force
+                Write-Host "::endgroup::"
+                throw
+            }
             # We noticed some spurious asynchronous activity after installation.
             # Let this background activity complete.
             $timeout = 5
