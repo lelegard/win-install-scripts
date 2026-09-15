@@ -19,7 +19,7 @@ jobs:
         $wg = Get-Command winget -ErrorAction SilentlyContinue
         $wpath = if ($wg -eq $null) { "not found" } else { $wg.Path }
         write-output "winget path: $wpath"
-        if ($wg -ne $null) {
+        if ($wg -eq $null) {
             ./install-winget.ps1 -GitHubActions -NoPause
             # Checking installed winget
             $wg = Get-Command winget -ErrorAction SilentlyContinue
