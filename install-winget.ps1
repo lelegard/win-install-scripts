@@ -29,7 +29,13 @@ function Find-WinGet()
             return "$dir\WinGet.exe"
         }
     }
-    return $null
+    $wg = Get-Command winget -ErrorAction SilentlyContinue
+    if ($wg -eq $null) {
+        return $null
+    }
+    else {
+        return $wg.Path
+    }
 }
 
 # Install WinGet only when not found.
@@ -55,7 +61,8 @@ if (-not (Find-WinGet)) {
             }
             Import-Module -Name Microsoft.WinGet.Client
             Write-Output "Installing WinGet ..."
-            try { Repair-WinGetPackageManager -AllUsers } catch {}
+            # try { Repair-WinGetPackageManager -AllUsers } catch {}
+            Repair-WinGetPackageManager -AllUsers
             # We noticed some spurious asynchronous activity after installation.
             # Let this background activity complete.
             $timeout = 5
