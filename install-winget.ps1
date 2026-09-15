@@ -36,10 +36,10 @@ if (-not (Search-Command winget)) {
             $retries--
             if ($PSVersionTable.PSVersion.Major -lt 7) {
                 Write-Output "Installing NuGet ..."
-                Install-PackageProvider -Name "NuGet" -Force -ForceBootstrap -ErrorAction Continue
+                Install-PackageProvider -Name "NuGet" -Force -ForceBootstrap
             }
             Write-Output "Installing Microsoft.WinGet.Client PowerShell module ..."
-            Install-Module -Name Microsoft.WinGet.Client -AcceptLicense -Force -AllowClobber -Repository PSGallery -ErrorAction Continue
+            Install-Module -Name Microsoft.WinGet.Client -AcceptLicense -Force -AllowClobber -Repository PSGallery
             Import-Module -Name Microsoft.WinGet.Client
             Write-Output "Installing WinGet ..."
             # try { Repair-WinGetPackageManager -AllUsers } catch {}
