@@ -16,6 +16,6 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - run: |
-        . install-common.ps1
+        . .\install-common.ps1
         Check-WinGet
         winget install --accept-package-agreements --accept-source-agreements --disable-interactivity tsduck
