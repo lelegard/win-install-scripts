@@ -370,6 +370,13 @@ function Install-Standard-Msi([string]$ReleasePage, [string]$Pattern, [string]$F
     Install-Msi $Url
 }
 
+# Standard installation procedure using WinGet.
+function Install-WinGet([string]$Name)
+{
+    Check-WinGet
+    winget install --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --exact --id $Name
+}
+
 # Get user environment variable.
 function Get-UserEnvironment([string]$Name)
 {
