@@ -483,13 +483,12 @@ function Check-WinGet()
         Write-Output "WinGet not found, checking AppxPackage"
         $pkg = Get-AppxPackage -Name Microsoft.DesktopAppInstaller
         if ($pkg -ne $null) {
-            Write-Output "Installing AppxPackage $pkg.PackageFamilyName"
+            Write-Output "Installing AppxPackage $($pkg.PackageFamilyName)"
             Add-AppxPackage -RegisterByFamilyName -MainPackage $pkg.PackageFamilyName
             $wg = Search-Command winget
         }
     }
-    $wg = if ($wg -eq $null) { "not found" } else { $wg }
-    Write-Output "WinGet path: $wg"
+    Write-Output "WinGet path: $(if ($wg -eq $null) { 'not found' } else { $wg })"
 }
 
 # Send a WM_SETTINGCHANGE message to all applications 
