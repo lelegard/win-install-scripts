@@ -16,6 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - run: |
+        $env:Path -split ';'
         $wg = Get-Command winget -ErrorAction SilentlyContinue
         $wpath = if ($wg -eq $null) { "not found" } else { $wg.Path }
         write-output "winget path: $wpath"
