@@ -488,7 +488,7 @@ function Check-WinGet()
             $wg = Search-Command winget
         }
     }
-    $wg = if ($wg -eq $null) { "not found" } else { $wg.Path }
+    $wg = if ($wg -eq $null) { "not found" } else { $wg }
     Write-Output "WinGet path: $wg"
 }
 
