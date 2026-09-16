@@ -20,10 +20,22 @@ jobs:
         $wpath = if ($wg -eq $null) { "not found" } else { $wg.Path }
         write-output "winget path: $wpath"
         if ($wg -eq $null) {
-            write-output "Check local AppxPackage"
+            write-output "Check local AppxPackage (AllUsers)"
             Get-AppxPackage -AllUsers -Name Microsoft.DesktopAppInstaller |
                 Select-Object Name, Version, Architecture, PackageFullName
-            ./install-winget.ps1 -GitHubActions -NoPause
+            write-output "Check local AppxPackage (User)"
+            Get-AppxPackage -Name Microsoft.DesktopAppInstaller |
+                Select-Object Name, Version, Architecture, PackageFullName
+            $a = Get-AppxPackage -Name Microsoft.DesktopAppInstaller
+            if ($a -ne $null) {
+                Add-AppxPackage -RegisterByFamilyName -MainPackage $a.PackageFamilyName
+                $wg = Get-Command winget -ErrorAction SilentlyContinue
+                $wpath = if ($wg -eq $null) { "not found" } else { $wg.Path }
+                write-output "winget path: $wpath"
+            }
+            else {
+                ./install-winget.ps1 -GitHubActions -NoPause
+            }
             # Checking installed winget
             $wg = Get-Command winget -ErrorAction SilentlyContinue
             $wpath = if ($wg -eq $null) { "not found" } else { $wg.Path }
