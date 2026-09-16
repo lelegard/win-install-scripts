@@ -1,0 +1,33 @@
+name: Test draw.io on GitHub runner
+on:
+  workflow_dispatch: # manual trigger
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: powershell # instead of default pwsh
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+    - uses: actions/checkout@master            
+    - run: |
+        .\install-drawio.ps1
+        $DrawIO = Get-ChildItem "C:\Program Files*\draw*\draw*io.exe", "$env:HOME\AppData\Local\Programs\draw*\draw*io.exe" | Select-Object -First 1
+        if ($DrawIO -eq $null) {
+            Write-Output "draw.io exe not found"
+        }
+        Write-Output "draw.io: $DrawIO"
+        $ProgressPreference = 'SilentlyContinue'
+        $TestURL = 'https://raw.githubusercontent.com/tsduck/tsduck-presentations/0e2ca588cb0ed672a2b730edc101a408029f2eab/diagrams/reactor-class-diagram.drawio'
+        Invoke-WebRequest -Uri $TestURL -OutFile test.drawio
+        Start-Process -Wait -FilePath $DrawIO -ArgumentList @("-x", "test.drawio", "-o", "test.png")
+        Get-ChildItem
+    - uses: actions/upload-artifact@v4
+      with:
+        name: png-${{ matrix.runner }}
+        path: test.png
