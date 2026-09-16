@@ -14,22 +14,8 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+    - uses: actions/checkout@master
     - run: |
-        write-output "Runner: ${{ matrix.runner }}"
-        write-output "Architecture: $env:PROCESSOR_ARCHITECTURE"
-        Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' | Select-Object ProductName, DisplayVersion, CurrentBuild, UBR
-        $wg = Get-Command winget -ErrorAction SilentlyContinue
-        if ($wg -eq $null) {
-            $progressPreference = 'silentlyContinue'
-            write-output "Downloading WinGet..."
-            Invoke-WebRequest -Uri https://aka.ms/getwinget -OutFile Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle
-            Invoke-WebRequest -Uri https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx -OutFile Microsoft.VCLibs.x64.14.00.Desktop.appx
-            Invoke-WebRequest -Uri https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.7.3/Microsoft.UI.Xaml.2.7.x64.appx -OutFile Microsoft.UI.Xaml.2.7.x64.appx
-            Add-AppxPackage Microsoft.VCLibs.x64.14.00.Desktop.appx
-            Add-AppxPackage Microsoft.UI.Xaml.2.7.x64.appx
-            Add-AppxPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle
-            $wg = Get-Command winget -ErrorAction SilentlyContinue
-            $wpath = if ($wg -eq $null) { "not found" } else { $wg.Path }
-            write-output "winget path: $wpath"
-        }
+        . install-common.ps1
+        Check-WinGet
         winget install --accept-package-agreements --accept-source-agreements --disable-interactivity tsduck

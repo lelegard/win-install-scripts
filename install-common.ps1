@@ -56,6 +56,15 @@ $UserAgent = "Wget"
 $DownloadRetryCount = 3
 $DownloadRetrySeconds = 5
 
+# Make sure that Microsoft\WindowsApps is in the Path (this is where winget should be).
+$mwapps = "$env:LOCALAPPDATA\Microsoft\WindowsApps"
+if ($mwapps -notin ($env:Path -split ';')) {
+    $env:PATH = "$env:PATH;$mwapps"
+}
+if ($GitHubActions -and ($env:GITHUB_PATH -ne $null)) {
+    Add-Content $env:GITHUB_PATH $mwapps
+}
+
 # Create the directory for external products or use default.
 if (-not $Destination) {
     $Destination = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
@@ -464,6 +473,23 @@ function Search-Command([string]$Name)
         }
     }
     return $res
+}
+
+# Enforce installation of winget (useful in GitHub runners).
+function Check-WinGet()
+{
+    $wg = Search-Command winget
+    if ($wg -eq $null) {
+        Write-Output "WinGet not found, checking AppxPackage"
+        $pkg = Get-AppxPackage -Name Microsoft.DesktopAppInstaller
+        if ($pkg -ne $null) {
+            Write-Output "Installing AppxPackage $pkg.PackageFamilyName"
+            Add-AppxPackage -RegisterByFamilyName -MainPackage $pkg.PackageFamilyName
+            $wg = Search-Command winget
+        }
+    }
+    $wg = if ($wg -eq $null) { "not found" } else { $wg.Path }
+    Write-Output "WinGet path: $wg"
 }
 
 # Send a WM_SETTINGCHANGE message to all applications 
