@@ -16,8 +16,9 @@ jobs:
     steps:
     - uses: actions/checkout@master            
     - run: |
-        .\install-drawio.ps1
-        $DrawIO = Get-ChildItem "C:\Program Files*\draw*\draw*io.exe", "$env:HOME\AppData\Local\Programs\draw*\draw*io.exe" | Select-Object -First 1
+        .\install-drawio.ps1 -GitHubActions -NoPause
+        .\install-optipng.ps1 -GitHubActions -NoPause
+        $DrawIO = Get-ChildItem  "$env:HOME\AppData\Local\Programs\draw*\draw*io.exe", "C:\Program Files*\draw*\draw*io.exe" | Select-Object -First 1
         if ($DrawIO -eq $null) {
             Write-Output "draw.io exe not found"
         }
@@ -26,7 +27,9 @@ jobs:
         $TestURL = 'https://raw.githubusercontent.com/tsduck/tsduck-presentations/0e2ca588cb0ed672a2b730edc101a408029f2eab/diagrams/reactor-class-diagram.drawio'
         Invoke-WebRequest -Uri $TestURL -OutFile test.drawio
         Start-Process -Wait -FilePath $DrawIO -ArgumentList @("-x", "test.drawio", "-o", "test.png")
-        Get-ChildItem
+        Get-Item test.png
+        optipng test.png -silent
+        Get-Item test.png
     - uses: actions/upload-artifact@v4
       with:
         name: png-${{ matrix.runner }}
