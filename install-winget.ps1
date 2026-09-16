@@ -44,7 +44,7 @@ if (-not (Search-Command winget)) {
             Write-Output "Installing WinGet ..."
             # try { Repair-WinGetPackageManager -AllUsers } catch {}
             try {
-                Repair-WinGetPackageManager -AllUsers -Verbose
+                Repair-WinGetPackageManager -AllUsers -Latest -Verbose
             } catch {
                 Write-Host "::group::Repair-WinGetPackageManager failure details"
                 Get-Module Microsoft.WinGet.Client | Select-Object Name, Version
