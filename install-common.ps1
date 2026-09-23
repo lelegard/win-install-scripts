@@ -370,7 +370,7 @@ function Install-Standard-Msi([string]$ReleasePage, [string]$Pattern, [string]$F
     Install-Msi $Url
 }
 
-# Standard installation procedure using WinGet.
+# Standard installation procedure using WinGet, using the full exact name of a package.
 function Install-WinGet([string]$Name)
 {
     Check-WinGet
@@ -419,7 +419,7 @@ function Add-Directory-To-Path([string]$Dir, [string]$PathName = "Path")
     $Value = Get-Environment $PathName
     if (";$Value;" -notlike "*;$Dir;*") {
         Write-Output "Adding $Dir to $PathName"
-        Define-Environment $PathName "$Value;$Dir"
+        Define-Environment $PathName "$Dir;$Value"
     }
 }
 
@@ -450,7 +450,7 @@ function Add-Start-Menu-Entry([string]$Name, [string]$Target, [string]$MenuSubDi
 # Search a file in a path.
 function Search-Path([string]$Name, [string]$Path = $env:Path)
 {
-    foreach ($dir in $Path.Split(';')) {
+    foreach ($dir in $Path -split ';') {
         if (Test-Path "$dir\$Name") {
             return "$dir\$Name"
         }

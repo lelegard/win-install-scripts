@@ -17,22 +17,36 @@ jobs:
     - uses: actions/checkout@master
     - name: Before installation
       run: |
+        Write-Output "=== Default python:"
         $a = Get-Command -ErrorAction SilentlyContinue python
         if ($a -ne $null) {
-            Write-Output "Python: $($a.Source)"
+            $a.Source
             python --version
         }
-        Write-Output "Path:"
+        Write-Output "=== All python:"
+        foreach ($dir in $env:Path -split ';') {
+            if (Test-Path "$dir\python.exe") {
+                "$dir\python.exe"
+            }
+        }
+        Write-Output "=== Path:"
         $env:Path -split ';'
     - name: Installation
       run: |
         .\install-python.ps1 -GitHubActions -NoPause
     - name: After installation
       run: |
+        Write-Output "=== Default python:"
         $a = Get-Command -ErrorAction SilentlyContinue python
         if ($a -ne $null) {
-            Write-Output "Python: $($a.Source)"
-            python --version
+            $a.Source
         }
-        Write-Output "Path:"
+        Write-Output "=== All python:"
+        foreach ($dir in $env:Path -split ';') {
+            if (Test-Path "$dir\python.exe") {
+                "$dir\python.exe"
+            }
+        }
+        Write-Output "=== Path:"
         $env:Path -split ';'
+        python --version
