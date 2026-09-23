@@ -1,0 +1,38 @@
+name: Install Python on GitHub runner
+on:
+  workflow_dispatch: # manual trigger
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: powershell # instead of default pwsh
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+    - uses: actions/checkout@master
+    - name: Before installation
+      run: |
+        $a = Get-Command -ErrorAction SilentlyContinue python
+        if ($a -ne $null) {
+            Write-Output "Python: $($a.Source)"
+            python --version
+        }
+        Write-Output "Path:"
+        $env:Path -split ';'
+    - name: Installation
+      run: |
+        .\install-python.ps1 -GitHubActions -NoPause
+    - name: After installation
+      run: |
+        $a = Get-Command -ErrorAction SilentlyContinue python
+        if ($a -ne $null) {
+            Write-Output "Python: $($a.Source)"
+            python --version
+        }
+        Write-Output "Path:"
+        $env:Path -split ';'
