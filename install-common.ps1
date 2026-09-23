@@ -61,9 +61,6 @@ $mwapps = "$env:LOCALAPPDATA\Microsoft\WindowsApps"
 if ($mwapps -notin ($env:Path -split ';')) {
     $env:PATH = "$env:PATH;$mwapps"
 }
-if ($GitHubActions -and ($env:GITHUB_PATH -ne $null)) {
-    Add-Content $env:GITHUB_PATH $mwapps
-}
 
 # Create the directory for external products or use default.
 if (-not $Destination) {
