@@ -33,7 +33,11 @@ jobs:
         $env:Path -split ';'
     - name: Installation
       run: |
+        Write-Output "=== Path before installation:"
+        $env:Path -split ';'
         .\install-python.ps1 -GitHubActions -NoPause
+        Write-Output "=== Path after installation:"
+        $env:Path -split ';'
     - name: After installation
       run: |
         Write-Output "=== Default python:"
