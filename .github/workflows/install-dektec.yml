@@ -1,0 +1,20 @@
+name: Install Dektec SDK on GitHub runner
+on:
+  workflow_dispatch: # manual trigger
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: powershell # instead of default pwsh
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+    - uses: actions/checkout@master            
+    - run: |
+        .\install-dektec.ps1 -GitHubActions -NoPause
+        Get-ChildItem -Recurse 'C:\Program Files*\*dektec*'
