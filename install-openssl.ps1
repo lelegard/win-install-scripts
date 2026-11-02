@@ -24,7 +24,7 @@ Write-Output "==== OpenSSL download and installation procedure"
 # A bit of history: Where to load OpenSSL binaries from?
 #
 # The packages are built by "slproweb". The binaries are downloadable from
-# their Web page at: http://slproweb.com/products/Win32OpenSSL.html
+# their Web page at: https://slproweb.com/products/Win32OpenSSL.html
 #
 # Initially, the HTML for this page was built on server-side. This script
 # grabbed the URL content, parse the HTML and extracted the URL of the
